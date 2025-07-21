@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - My To-Do App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .form-container {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .dark .form-container {
+            background-color: #374151;
+            color: #E5E7EB;
+        }
+        .dark input {
+            background-color: #4B5563;
+            color: #E5E7EB;
+            border-color: #6B7280;
+        }
+        /* Styles for Django messages */
+        .messages {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 1rem;
+        }
+        .messages li {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .messages .success {
+            background-color: #d1fae5; /* green-100 */
+            color: #065f46; /* green-700 */
+            border: 1px solid #34d399; /* green-400 */
+        }
+        .messages .error {
+            background-color: #fee2e2; /* red-100 */
+            color: #991b1b; /* red-700 */
+            border: 1px solid #f87171; /* red-400 */
+        }
+        .messages .info {
+            background-color: #e0f2fe; /* blue-100 */
+            color: #0c4a6e; /* blue-700 */
+            border: 1px solid #60a5fa; /* blue-400 */
+        }
+        .dark .messages .success {
+            background-color: #065f46;
+            color: #d1fae5;
+            border-color: #34d399;
+        }
+        .dark .messages .error {
+            background-color: #991b1b;
+            color: #fee2e2;
+            border-color: #f87171;
+        }
+        .dark .messages .info {
+            background-color: #0c4a6e;
+            color: #e0f2fe;
+            border-color: #60a5fa;
+        }
+
+        /* Errorlist for form-specific errors */
+        .errorlist {
+            color: #ef4444; /* Tailwind red-500 */
+            font-size: 0.875rem; /* text-sm */
+            margin-top: 0.5rem;
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .errorlist li {
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white dark:bg-gray-700 p-8 rounded-lg form-container w-full max-w-md mx-auto relative">
+        {# Theme toggle button #}
+        <div class="absolute top-4 right-4">
+            <button id="theme-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fas fa-moon dark:hidden"></i>
+                <i class="fas fa-sun hidden dark:inline-block"></i>
+            </button>
+        </div>
+
+        <h2 class="text-3xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-8 mt-12">Login to Your Account</h2>
+        
+        {# Display general Django Messages (success, error, info from views) #}
+        {% if messages %}
+            <ul class="messages mb-4">
+                {% for message in messages %}
+                    <li {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        {# Display non-field errors from the form #}
+        {% if form.non_field_errors %}
+            <ul class="errorlist mb-4 px-4 py-2 bg-red-100 dark:bg-red-900 rounded-md">
+                {% for error in form.non_field_errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            
+            <div class="mb-5">
+                <label for="id_username" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Username:</label>
+                <input type="text" id="id_username" name="username" autocomplete="username" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 {% if form.username.errors %}border-red-500{% endif %}" placeholder="Your username" value="{{ form.username.value|default_if_none:'' }}" required>
+                {% if form.username.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.username.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <div class="mb-6">
+                <label for="id_password" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Password:</label>
+                <input type="password" id="id_password" name="password" autocomplete="current-password" class="shadow appearance-none border rounded w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500 {% if form.password.errors %}border-red-500{% endif %}" placeholder="Your password" required>
+                {% if form.password.errors %}
+                    <ul class="errorlist">
+                        {% for error in form.password.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            
+            <div class="flex items-center justify-between mb-6">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 w-full">
+                    Login
+                </button>
+            </div>
+            
+            <p class="text-center text-gray-600 dark:text-gray-300 text-sm">
+                Don't have an account? 
+                <a href="{% url 'signup' %}" class="text-indigo-600 dark:text-indigo-400 hover:underline font-bold">Sign Up Here</a>
+            </p>
+        </form>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+
+            // Apply theme on load
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+
+            // Theme toggle functionality
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            });
+
+            // Auto-hide messages after a delay if they are present on page load
+            const messagesList = document.querySelector('.messages');
+            if (messagesList && messagesList.children.length > 0) {
+                setTimeout(() => {
+                    messagesList.style.display = 'none'; // Simple hide
+                }, 5000); // Hide after 5 seconds
+            }
+        });
+    </script>
+</body>
+</html>

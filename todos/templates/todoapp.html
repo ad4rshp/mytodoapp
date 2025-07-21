@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'task-green': '#4CAF50',
+                        'task-red': '#F44336',
+                        'task-yellow': '#FFEB3B',
+                    },
+                    keyframes: {
+                        fadeInScale: {
+                            '0%': { opacity: '0', transform: 'scale(0.95)' },
+                            '100%': { opacity: '1', transform: 'scale(1)' },
+                        },
+                        fadeOut: {
+                            '0%': { opacity: '1' },
+                            '100%': { opacity: '0' },
+                        },
+                        slideInUpFade: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    },
+                    animation: {
+                        fadeInScale: 'fadeInScale 0.2s ease-out forwards',
+                        fadeOut: 'fadeOut 0.5s ease-out forwards',
+                        slideInUpFade: 'slideInUpFade 0.5s ease-out forwards',
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Light theme gradient */
+            background: linear-gradient(135deg, #a7f3d0, #bfdbfe, #e0c3fc); /* Tailwind green-200, blue-200, purple-200 */
+            background-attachment: fixed;
+            transition: background 0.3s ease, color 0.3s ease;
+            overflow-x: hidden;
+        }
+        /* Dark theme gradient */
+        .dark body {
+            background: linear-gradient(135deg, #10b981, #3b82f6, #8b5cf6); /* Tailwind green-600, blue-600, purple-600 */
+            background-attachment: fixed;
+        }
+
+        /* Applying a slightly different gradient to the main content area */
+        main {
+            background: rgba(255, 255, 255, 0.7); /* Slightly transparent white for light theme */
+            backdrop-filter: blur(5px); /* Optional: adds a frosted glass effect */
+            border-radius: 1rem;
+            padding: 1.5rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .dark main {
+            background: rgba(31, 41, 55, 0.7); /* Slightly transparent dark gray for dark theme */
+            color: #E5E7EB;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .navbar-shadow {
+            box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.15), 0 2px 4px -2px rgba(0, 0, 0, 0.08);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15), 0 4px 6px -2px rgba(0, 0, 0, 0.08);
+        }
+        .status-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s ease, transform 0.3s ease-out, box-shadow 0.2s ease;
+            color: white;
+            font-size: 1rem;
+            z-index: 20;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .status-button:hover {
+            transform: rotate(360deg) scale(1.1);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        /* Ensure text/icon color contrasts well with status backgrounds */
+        .status-button.status-green { background-color: #4CAF50; color: white; }
+        .status-button.status-red { background-color: #F44336; color: white; }
+        .status-button.status-yellow { background-color: #FFEB3B; color: #333; }
+
+        .modal {
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.2s ease-out;
+        }
+        .modal.open {
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 2.5rem;
+            border-radius: 0.75rem;
+            width: 90%;
+            max-width: 550px;
+            position: relative;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-out;
+        }
+        .modal.open .modal-content {
+            animation: fadeInScale 0.2s ease-out forwards;
+        }
+        .dark .modal-content {
+            background-color: #374151;
+            color: #E5E7EB;
+        }
+        .dark input, .dark textarea, .dark select {
+            background-color: #4B5563;
+            color: #E5E7EB;
+            border-color: #6B7280;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: -6px 0 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            z-index: 999;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .dark .sidebar {
+            background-color: #1F2937;
+            box-shadow: -6px 0 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 998;
+            display: none;
+            transition: opacity 0.3s ease;
+            opacity: 0;
+        }
+        .sidebar-overlay.open {
+            display: block;
+            opacity: 1;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Message area styles for Django messages */
+        .messages {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 1rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            position: relative;
+            top: 10px;
+            z-index: 100;
+        }
+        .messages li {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .messages .success {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        .messages .error {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #f87171;
+        }
+        .messages .info {
+            background-color: #e0f2fe;
+            color: #0c4a6e;
+            border: 1px solid #60a5fa;
+        }
+        .dark .messages .success {
+            background-color: #065f46;
+            color: #d1fae5;
+            border-color: #34d399;
+        }
+        .dark .messages .error {
+            background-color: #991b1b;
+            color: #fee2e2;
+            border-color: #f87171;
+        }
+        .dark .messages .info {
+            background-color: #0c4a6e;
+            color: #e0f2fe;
+            border-color: #60a5fa;
+        }
+
+        /* Message area styles for JS messages */
+        .page-message-area {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.85rem 1.75rem;
+            border-radius: 0.65rem;
+            z-index: 1001;
+            box-shadow: 0 5px 15px -5px rgba(0, 0, 0, 0.2);
+            min-width: 280px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-out;
+            pointer-events: none;
+        }
+        .page-message-area.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .page-message-success {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .page-message-error {
+            background-color: #fee2e2;
+            color: #991b1b;
+        }
+        .dark .page-message-success {
+            background-color: #065f46;
+            color: #d1fae5;
+        }
+        .dark .page-message-error {
+            background-color: #991b1b;
+            color: #fee2e2;
+        }
+
+        /* Task card entry animation class */
+        .task-card-enter {
+            animation: slideInUpFade 0.5s ease-out forwards;
+        }
+
+        /* Responsive adjustments for username greeting */
+        @media (max-width: 767px) { /* For screens smaller than md breakpoint */
+            .navbar-greeting-mobile {
+                position: static;
+                text-align: center;
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
+                display: block;
+            }
+            .navbar-title-mobile {
+                order: 1;
+            }
+            .navbar-controls-mobile {
+                order: 2;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800 dark:text-gray-200 min-h-screen flex flex-col">
+
+    <nav class="bg-white dark:bg-gray-800 p-4 navbar-shadow sticky top-0 z-50">
+        <div class="w-full max-w-screen-2xl mx-auto flex items-center justify-between px-4 relative flex-wrap">
+            {# App Title #}
+            <a href="#" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400 z-10 navbar-title-mobile">Todo App</a>
+
+            {# User Greeting - Adjusted for responsiveness #}
+            <div class="hidden md:flex absolute inset-x-0 top-0 bottom-0 items-center justify-center pointer-events-none">
+                <div id="user-greeting-container-desktop" class="text-lg font-semibold text-gray-700 dark:text-gray-300 opacity-1">
+                    Hello, <span id="display-username-desktop"></span>!
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-4 z-10 navbar-controls-mobile ml-auto md:ml-0">
+                <button id="theme-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:inline-block"></i>
+                </button>
+
+                <button id="sidebar-toggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <i class="fas fa-ellipsis-v"></i>
+                </button>
+
+                <button id="mobile-menu-button" class="md:hidden text-gray-600 dark:text-gray-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            {# User Greeting for Mobile - displayed separately below the title #}
+            <div class="w-full md:hidden navbar-greeting-mobile">
+                <div id="user-greeting-container-mobile" class="text-base font-semibold text-gray-700 dark:text-gray-300 opacity-1 pointer-events-none mb-2">
+                    Hello, <span id="display-username-mobile"></span>!
+                </div>
+            </div>
+        </div>
+
+        <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+        </div>
+    </nav>
+
+    {# Django Messages area #}
+    {% if messages %}
+        <ul class="messages mt-4">
+            {% for message in messages %}
+                <li {% if message.tags %}class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {# Global JavaScript message area #}
+    <div id="page-message-area" class="page-message-area"></div>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <aside id="sidebar" class="sidebar">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100">Filters</h3>
+            <button id="sidebar-close" class="p-2 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <nav>
+            <ul class="space-y-4">
+                <li>
+                    <button class="filter-btn block w-full text-left px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 font-medium" data-status="all">
+                        All Tasks
+                    </button>
+                </li>
+                <li>
+                    <button class="filter-btn block w-full text-left px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 font-medium" data-status="in-progress">
+                        <span class="w-3 h-3 inline-block rounded-full mr-2 bg-task-yellow align-middle"></span>In Progress
+                    </button>
+                </li>
+                <li>
+                    <button class="filter-btn block w-full text-left px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 font-medium" data-status="complete">
+                        <span class="w-3 h-3 inline-block rounded-full mr-2 bg-task-green align-middle"></span>Complete
+                    </button>
+                </li>
+                <li>
+                    <button class="filter-btn block w-full text-left px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 font-medium" data-status="on-hold">
+                        <span class="w-3 h-3 inline-block rounded-full mr-2 bg-task-red align-middle"></span>On Hold
+                    </button>
+                </li>
+                <li>
+                    <a href="{% url 'logout' %}" class="block w-full text-left px-4 py-2 rounded-md text-gray-700 dark:text-gray-200 hover:bg-red-200 dark:hover:bg-red-700 transition-colors duration-200 font-medium mt-8">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </aside>
+
+    <main class="flex-grow w-full max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+        <div class="flex justify-center mb-8">
+            <button id="add-task-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-full transition-all duration-300 transform hover:scale-105 shadow-lg focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50">
+                <i class="fas fa-plus mr-2"></i> Add New Task
+            </button>
+        </div>
+
+        <div id="task-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </main>
+
+    <div id="task-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100">Add New Task</h2>
+            <form id="task-form">
+                <input type="hidden" id="task-id">
+                <div class="mb-4">
+                    <label for="task-description" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Task Description:</label>
+                    <textarea id="task-description" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500" required></textarea>
+                </div>
+                <div class="mb-4">
+                    <label for="due-date" class="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2">Due Date:</label>
+                    <input type="date" id="due-date" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex items-center justify-end space-x-4">
+                    <button type="button" id="delete-task-button" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 hidden">
+                        Delete Task
+                    </button>
+                    <button type="button" id="cancel-task-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500">Cancel</button>
+                    <button type="submit" id="save-task-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const getById = (id) => document.getElementById(id);
+
+            const themeToggleBtn = getById('theme-toggle');
+            const mobileMenuButton = getById('mobile-menu-button');
+            const mobileMenu = getById('mobile-menu');
+            const addTaskButton = getById('add-task-button');
+            const taskModal = getById('task-modal');
+            const cancelTaskButton = getById('cancel-task-button');
+            const taskForm = getById('task-form');
+            const taskDescriptionInput = getById('task-description');
+            const dueDateInput = getById('due-date');
+            const taskIdInput = getById('task-id');
+            const modalTitle = getById('modal-title');
+            const taskCardsContainer = getById('task-cards-container');
+            const sidebarToggleBtn = getById('sidebar-toggle');
+            const sidebar = getById('sidebar');
+            const sidebarCloseBtn = getById('sidebar-close');
+            const sidebarOverlay = getById('sidebar-overlay');
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            const saveTaskButton = getById('save-task-button');
+            const deleteTaskButton = getById('delete-task-button');
+            const pageMessageArea = getById('page-message-area');
+            const djangoMessagesList = document.querySelector('.messages');
+
+            const username = "{{ request.user.username }}";
+            const userGreetingContainerDesktop = getById('user-greeting-container-desktop');
+            const displayUsernameElemDesktop = getById('display-username-desktop');
+            const userGreetingContainerMobile = getById('user-greeting-container-mobile');
+            const displayUsernameElemMobile = getById('display-username-mobile');
+
+            let editingTaskId = null;
+            let allTasks = [];
+
+            // --- Theme Toggling ---
+            const currentTheme = localStorage.getItem('theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+            }
+            themeToggleBtn.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            });
+
+            // --- Mobile Menu Toggle ---
+            mobileMenuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            // --- Modals (Add/Edit Task) ---
+            const openModal = (modalElement) => {
+                modalElement.classList.remove('hidden');
+                modalElement.classList.add('open');
+                if (modalElement === taskModal) {
+                    if (editingTaskId) {
+                        deleteTaskButton.classList.remove('hidden');
+                    } else {
+                        deleteTaskButton.classList.add('hidden');
+                    }
+                }
+            };
+            const closeModal = (modalElement) => {
+                modalElement.classList.remove('open');
+                modalElement.querySelector('.modal-content').style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    modalElement.classList.add('hidden');
+                    if (modalElement === taskModal) {
+                        taskForm.reset();
+                        editingTaskId = null;
+                        modalTitle.textContent = 'Add New Task';
+                        deleteTaskButton.classList.add('hidden');
+                    }
+                }, 200);
+                hidePageMessage();
+            };
+
+            addTaskButton.addEventListener('click', () => {
+                modalTitle.textContent = 'Add New Task';
+                editingTaskId = null;
+                openModal(taskModal);
+            });
+
+            cancelTaskButton.addEventListener('click', () => closeModal(taskModal));
+            taskModal.addEventListener('click', (e) => {
+                if (e.target === taskModal) closeModal(taskModal);
+            });
+
+            // --- Sidebar Navigation ---
+            const openSidebar = () => {
+                sidebar.classList.add('open');
+                sidebarOverlay.classList.add('open');
+            };
+            const closeSidebar = () => {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.remove('open');
+            };
+            sidebarToggleBtn.addEventListener('click', openSidebar);
+            sidebarCloseBtn.addEventListener('click', closeSidebar);
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            // --- Task Status Info Helper ---
+            const getStatusInfo = (status) => {
+                switch (status) {
+                    case 'complete': return {
+                        buttonClass: 'status-green',
+                        text: 'Complete',
+                        cardBgClass: 'bg-emerald-100 dark:bg-emerald-700',
+                        cardTextColor: 'text-emerald-800 dark:text-emerald-100'
+                    };
+                    case 'on-hold': return {
+                        buttonClass: 'status-red',
+                        text: 'On Hold',
+                        cardBgClass: 'bg-rose-100 dark:bg-rose-700',
+                        cardTextColor: 'text-rose-800 dark:text-rose-100'
+                    };
+                    case 'in-progress':
+                    default: return {
+                        buttonClass: 'status-yellow',
+                        text: 'In Progress',
+                        cardBgClass: 'bg-amber-100 dark:bg-yellow-500',
+                        cardTextColor: 'text-amber-800 dark:text-yellow-900'
+                    };
+                }
+            };
+
+            // --- CSRF Token Helper (for Django AJAX) ---
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+
+            // --- Page Message Display (for JS-generated alerts) ---
+            function showPageMessage(message, type) {
+                pageMessageArea.textContent = message;
+                pageMessageArea.className = `page-message-area ${type === 'success' ? 'page-message-success' : 'page-message-error'} show`;
+                
+                setTimeout(() => {
+                    pageMessageArea.classList.remove('show');
+                    pageMessageArea.classList.add('animation-fadeOut');
+                    setTimeout(() => {
+                        pageMessageArea.className = 'page-message-area';
+                        pageMessageArea.textContent = '';
+                    }, 500);
+                }, 3000);
+            }
+            function hidePageMessage() {
+                pageMessageArea.classList.remove('show');
+                pageMessageArea.classList.remove('animation-fadeOut');
+                pageMessageArea.textContent = '';
+                pageMessageArea.className = 'page-message-area';
+            }
+
+
+            // --- Fetch & Display Tasks ---
+            const fetchTasks = async (filterStatus = 'all') => {
+                try {
+                    const response = await fetch(`${window.location.origin}/api/tasks/`);
+                    if (!response.ok) {
+                        if (response.status === 403 || response.status === 401) {
+                            window.location.href = '{% url "login" %}';
+                            return;
+                        }
+                        const errorData = await response.json().catch(() => ({}));
+                        showPageMessage(`Failed to load tasks: ${errorData.error || response.statusText}`, 'error');
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const tasks = await response.json();
+                    allTasks = tasks;
+                    filterTasks(filterStatus);
+                } catch (error) {
+                    showPageMessage('Could not connect to server or unexpected error occurred.', 'error');
+                }
+            };
+
+            // --- Create Individual Task Card HTML ---
+            const createTaskCard = (task) => {
+                const card = document.createElement('div');
+                card.id = `task-${task.id}`;
+                card.dataset.status = task.status;
+                
+                let { buttonClass: statusButtonClass, text: statusText, cardBgClass, cardTextColor } = getStatusInfo(task.status);
+
+                card.classList.add(...cardBgClass.split(' ')); 
+                card.classList.add(...cardTextColor.split(' ')); 
+                card.classList.add('rounded-lg', 'p-6', 'card-shadow', 'flex', 'flex-col', 'relative', 'overflow-hidden', 'transition-all', 'transform', 'hover:scale-103', 'duration-300', 'border', 'border-gray-200', 'dark:border-gray-600');
+                
+                card.innerHTML = `
+                    <div class="absolute top-4 left-4">
+                        <button class="edit-task-btn p-2 rounded-full text-blue-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500" data-task-id="${task.id}" aria-label="Edit Task">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="absolute top-4 right-4">
+                        <button class="status-cycle-btn status-button ${statusButtonClass}" data-task-id="${task.id}" data-current-status="${task.status}" aria-label="Current status: ${statusText}. Click to change.">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex-grow flex items-center justify-center text-center mt-12 mb-4 px-4">
+                        <p class="text-xl font-semibold leading-relaxed">${task.description}</p>
+                    </div>
+
+                    <div class="flex flex-wrap justify-between items-end mt-auto pt-4 border-t border-gray-200 dark:border-gray-600 text-sm">
+                        <div class="mb-1 sm:mb-0">
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Due:</span> <span class="due-date">${task.due_date || 'N/A'}</span>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-700 dark:text-gray-300">Completed:</span> <span class="complete_date">${task.complete_date || 'N/A'}</span>
+                        </div>
+                    </div>
+                `;
+
+                card.querySelector('.edit-task-btn').addEventListener('click', (e) => editTask(e.target.closest('button').dataset.taskId));
+                card.querySelector('.status-cycle-btn').addEventListener('click', (e) => {
+                    const button = e.currentTarget;
+                    const currentStatus = button.dataset.currentStatus;
+                    const taskId = button.dataset.taskId;
+                    
+                    let nextStatus;
+                    switch (currentStatus) {
+                        case 'in-progress': nextStatus = 'complete'; break;
+                        case 'complete': nextStatus = 'on-hold'; break;
+                        case 'on-hold': nextStatus = 'in-progress'; break;
+                        default: nextStatus = 'in-progress';
+                    }
+                    updateTaskStatus(taskId, nextStatus);
+                });
+
+                return card;
+            };
+
+            // --- Handle Task Form Submission (Add/Update) ---
+            taskForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                saveTaskButton.disabled = true;
+                deleteTaskButton.disabled = true;
+                
+                const description = taskDescriptionInput.value;
+                const dueDate = dueDateInput.value;
+                const csrfToken = getCookie('csrftoken');
+
+                const taskDataPayload = {
+                    description: description,
+                    due_date: dueDate,
+                };
+
+                try {
+                    let response;
+                    if (editingTaskId) {
+                        response = await fetch(`${window.location.origin}/api/tasks/${editingTaskId}/`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                            body: JSON.stringify(taskDataPayload)
+                        });
+                    } else {
+                        response = await fetch(`${window.location.origin}/api/tasks/`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                            body: JSON.stringify({ ...taskDataPayload, status: 'in-progress', complete_date: null })
+                        });
+                    }
+
+                    if (!response.ok) {
+                         if (response.status === 403 || response.status === 401) {
+                            window.location.href = '{% url "login" %}';
+                            return;
+                        }
+                        const errorData = await response.json().catch(() => ({}));
+                        showPageMessage(`Failed to save task: ${errorData.error || response.statusText}`, 'error');
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    showPageMessage('Task saved successfully!', 'success');
+                    fetchTasks(document.querySelector('.filter-btn.active')?.dataset.status || 'all');
+                    closeModal(taskModal);
+
+                } catch (error) {
+                    showPageMessage('An unexpected error occurred while saving the task.', 'error');
+                } finally {
+                    saveTaskButton.disabled = false;
+                    deleteTaskButton.disabled = false;
+                }
+            });
+
+            // --- Update Task Card in DOM (after API changes) ---
+            const updateTaskInDOM = (task) => {
+                const card = getById(`task-${task.id}`);
+                if (card) {
+                    card.classList.forEach(cls => {
+                        if (cls.startsWith('bg-') || cls.startsWith('dark:bg-') || cls.startsWith('text-')) {
+                            card.classList.remove(cls);
+                        }
+                    });
+
+                    let { buttonClass: statusButtonClass, text: statusText, cardBgClass, cardTextColor } = getStatusInfo(task.status);
+                    card.classList.add(...cardBgClass.split(' ')); 
+                    card.classList.add(...cardTextColor.split(' ')); 
+                    
+                    card.querySelector('.text-xl').textContent = task.description;
+                    card.querySelector('.due-date').textContent = task.due_date || 'N/A';
+                    card.querySelector('.complete_date').textContent = task.complete_date || 'N/A';
+                    card.dataset.status = task.status;
+
+                    const statusButton = card.querySelector('.status-cycle-btn');
+                    statusButton.classList.remove('status-green', 'status-red', 'status-yellow');
+                    statusButton.classList.add(statusButtonClass);
+                    statusButton.dataset.currentStatus = task.status;
+                    statusButton.setAttribute('aria-label', `Current status: ${statusText}. Click to change.`);
+                }
+            };
+
+            // --- Populate Modal for Editing Task ---
+            const editTask = (taskId) => {
+                const taskToEdit = allTasks.find(task => task.id == taskId);
+                if (taskToEdit) {
+                    taskDescriptionInput.value = taskToEdit.description;
+                    dueDateInput.value = taskToEdit.due_date || '';
+                    taskIdInput.value = taskId;
+                    editingTaskId = taskId;
+                    modalTitle.textContent = 'Edit Task';
+                    openModal(taskModal);
+                }
+            };
+
+            // --- Delete Single Task ---
+            deleteTaskButton.addEventListener('click', async () => {
+                if (!editingTaskId) return;
+
+                saveTaskButton.disabled = true;
+                deleteTaskButton.disabled = true;
+                
+                try {
+                    const csrfToken = getCookie('csrftoken');
+                    const response = await fetch(`${window.location.origin}/api/tasks/${editingTaskId}/`, {
+                        method: 'DELETE',
+                        headers: { 'X-CSRFToken': csrfToken }
+                    });
+
+                    if (!response.ok) {
+                        if (response.status === 403 || response.status === 401) {
+                            window.location.href = '{% url "login" %}';
+                            return;
+                        }
+                        const errorData = await response.json().catch(() => ({}));
+                        showPageMessage(`Failed to delete task: ${errorData.error || response.statusText}`, 'error');
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    showPageMessage('Task deleted successfully!', 'success');
+                    fetchTasks(document.querySelector('.filter-btn.active')?.dataset.status || 'all');
+                    closeModal(taskModal);
+
+                } catch (error) {
+                    showPageMessage('An unexpected error occurred while deleting the task.', 'error');
+                } finally {
+                    saveTaskButton.disabled = false;
+                    deleteTaskButton.disabled = false;
+                }
+            });
+
+            // --- Update Single Task Status (from status cycle button on card) ---
+            const updateTaskStatus = async (taskId, newStatus) => {
+                const csrfToken = getCookie('csrftoken');
+                let completeDate = null;
+                if (newStatus === 'complete') {
+                    completeDate = new Date().toISOString().split('T')[0];
+                }
+                
+                try {
+                    const response = await fetch(`${window.location.origin}/api/tasks/${taskId}/`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ status: newStatus, complete_date: completeDate })
+                    });
+
+                    if (!response.ok) {
+                         if (response.status === 403 || response.status === 401) {
+                            window.location.href = '{% url "login" %}';
+                            return;
+                        }
+                        const errorData = await response.json().catch(() => ({}));
+                        showPageMessage(`Failed to update status: ${errorData.error || response.statusText}`, 'error');
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    showPageMessage('Task status updated!', 'success');
+                    fetchTasks(document.querySelector('.filter-btn.active')?.dataset.status || 'all');
+
+                } catch (error) {
+                    showPageMessage('An unexpected error occurred while updating task status.', 'error');
+                }
+            };
+
+            // --- Filter Tasks Displayed ---
+            const filterTasks = (status) => {
+                taskCardsContainer.innerHTML = '';
+                const cardsToShow = allTasks.filter(task => status === 'all' || task.status === status);
+                
+                if (cardsToShow.length === 0) {
+                    taskCardsContainer.innerHTML = `
+                        <div class="col-span-full text-center py-10 text-gray-500 dark:text-gray-400">
+                            <p class="text-xl font-medium mb-2">No tasks found for "${status}" status.</p>
+                            <p>Try adding a new task or changing your filter.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                cardsToShow.forEach((task, index) => {
+                    const card = createTaskCard(task);
+                    taskCardsContainer.appendChild(card);
+                    // Trigger animation after appending
+                    setTimeout(() => {
+                        card.classList.add('task-card-enter');
+                    }, 50 * index);
+                });
+
+
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('bg-indigo-100', 'dark:bg-indigo-800', 'text-indigo-700', 'dark:text-indigo-300');
+                    btn.classList.add('text-gray-700', 'dark:text-gray-200', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
+                });
+                const activeBtn = document.querySelector(`.filter-btn[data-status="${status}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('bg-indigo-100', 'dark:bg-indigo-800', 'text-indigo-700', 'dark:text-indigo-300');
+                    activeBtn.classList.remove('text-gray-700', 'dark:text-gray-200', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
+                }
+                closeSidebar();
+            };
+
+            // Event listeners for filter buttons in sidebar
+            filterButtons.forEach(button => {
+                button.addEventListener('click', () => filterTasks(button.dataset.status));
+            });
+
+            // Auto-hide Django messages that appear on page load
+            if (djangoMessagesList) {
+                setTimeout(() => {
+                    djangoMessagesList.style.display = 'none';
+                }, 5000);
+            }
+
+            // --- User Greeting Animation (Typing and Backspace Loop) ---
+            if (username && username !== 'None') {
+                if (displayUsernameElemDesktop) displayUsernameElemDesktop.textContent = '';
+                if (displayUsernameElemMobile) displayUsernameElemMobile.textContent = '';
+
+                let charIndex = 0;
+                let isTyping = true;
+                const typingSpeed = 100;
+                const erasingSpeed = 60;
+                const delayAfterTyping = 2000;
+                const delayBeforeRetyping = 1000;
+
+                function animateGreeting() {
+                    const desktopElem = getById('display-username-desktop');
+                    const mobileElem = getById('display-username-mobile');
+
+                    if (isTyping) {
+                        if (charIndex < username.length) {
+                            if (desktopElem) desktopElem.textContent += username.charAt(charIndex);
+                            if (mobileElem) mobileElem.textContent += username.charAt(charIndex);
+                            charIndex++;
+                            setTimeout(animateGreeting, typingSpeed);
+                        } else {
+                            isTyping = false;
+                            setTimeout(animateGreeting, delayAfterTyping);
+                        }
+                    } else { // Erasing
+                        if ((desktopElem && desktopElem.textContent.length > 0) || (mobileElem && mobileElem.textContent.length > 0)) {
+                            if (desktopElem) desktopElem.textContent = desktopElem.textContent.slice(0, -1);
+                            if (mobileElem) mobileElem.textContent = mobileElem.textContent.slice(0, -1);
+                            setTimeout(animateGreeting, erasingSpeed);
+                        } else {
+                            isTyping = true;
+                            charIndex = 0;
+                            setTimeout(animateGreeting, delayBeforeRetyping);
+                        }
+                    }
+                }
+                animateGreeting();
+            } else {
+                if (userGreetingContainerDesktop) userGreetingContainerDesktop.style.display = 'none';
+                if (userGreetingContainerMobile) userGreetingContainerMobile.style.display = 'none';
+            }
+
+            // Initial fetch of tasks when the page loads
+            fetchTasks('all');
+        });
+    </script>
+</body>
+</html>
